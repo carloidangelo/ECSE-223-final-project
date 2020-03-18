@@ -1,0 +1,120 @@
+namespace ca.mcgill.ecse223.resto.model;
+
+use RestoAppPersistence.ump;
+use RestoAppTableStateMachine.ump;
+
+class RestoApp {
+   1 <@>- * Reservation reservations; // sorted by date and time
+   1 <@>- * Table tables;
+   0..1 -> * Table currentTables; // subsets tables
+   1 <@>- * Order orders;
+   0..1 -> * Order currentOrders; // subsets orders
+   1 <@>- 1 Menu menu;   
+   1 <@>- * PricedMenuItem pricedMenuItems;
+   1 <@>- * Bill bills;
+ 	public java.util.Date getCurrentDate(){
+		Calendar cal = Calendar.getInstance();
+    	java.util.Date date = new java.util.Date();
+    	cal.setTimeInMillis(date.getTime());
+    	cal.set(Calendar.HOUR_OF_DAY, 0);
+    	cal.set(Calendar.MINUTE, 0);
+    	cal.set(Calendar.SECOND, 0);
+    	cal.set(Calendar.MILLISECOND, 0);
+    	java.util.Date tempCleanedDate = cal.getTime();
+    	java.sql.Date cleanedDate = new java.sql.Date(tempCleanedDate.getTime());
+    	return cleanedDate;
+  	}
+   
+   	public java.util.Date getCurrentTime(){
+	   java.util.Date date = new java.util.Date();
+	   return date;
+   	}
+}
+
+class Reservation{
+   Date date;
+   Time time;
+   Integer numberInParty;
+   contactName;
+   contactEmailAddress;
+   contactPhoneNumber;
+   autounique reservationNumber;
+   *reservations -- 1..* Table tables; // only from currentTables
+   public boolean doesOverlap(Date date, Time time){
+    boolean overlap = false;
+    long time1 = this.getTime().getTime();
+    long time2 = time.getTime();
+    long twoh= 7200000;
+    long timediff = Math.abs(time2 - time1);
+    if(timediff <= twoh) {
+    	overlap=true;
+    }
+    return overlap;
+  }
+   
+}
+
+class Table {
+   unique Integer number;
+   Integer x;
+   Integer y;
+   Integer width;
+   Integer length;
+   1 <@>- 1..* Seat seats;
+   0..1 -> * Seat currentSeats; // subsets seats
+   public boolean doesOverlap(int x, int y, int width, int length)
+  {
+		if ( ((x+width)<this.getX()) || (x>(this.getX()+this.getWidth())) || ((y+length)<this.getY()) || (y>(this.getY()+this.getLength())) )
+		{
+			return false;
+		}
+		else 
+		{
+			return true;
+		}
+  }
+}
+
+class Seat {
+}
+
+class Order {
+   Date date;
+   Time time;
+   autounique number;
+   * orders -- 1..* Table tables; // only from currentTables for currentOrders
+   1 <@>- * OrderItem orderItems;
+}
+
+class OrderItem {
+   Integer quantity;
+   * orderItems -- 1 PricedMenuItem pricedMenuItem; // only from MenuItem.currentPricedMenuItem for currentOrders
+   * orderItems -- 1..* Seat seats; // only from order.tables.seats
+}
+
+class HighChair {
+   0..3 -- 0..1 Table;
+   0..3 -- 0..1 Reservation;
+   3 -<@> 1 RestoApp;
+}
+
+class Menu {   
+   1 <@>- * MenuItem menuItems;
+}
+
+class MenuItem {
+   unique name;
+   enum ItemCategory { Appetizer, Main, Dessert, AlcoholicBeverage, NonAlcoholicBeverage }
+   lazy ItemCategory itemCategory;
+   1 -- 1..* PricedMenuItem pricedMenuItems;
+   0..1 -> 0..1 PricedMenuItem currentPricedMenuItem; // subsets priced menus items
+}
+
+class PricedMenuItem {
+   Double price;
+}
+
+class Bill {
+   * bills -- 1 Order order; // order.bills.issuedForSeats = order.orderItems.seats
+   * bills -- 1..* Seat issuedForSeats; // only from order.orderItems.seats;
+}
